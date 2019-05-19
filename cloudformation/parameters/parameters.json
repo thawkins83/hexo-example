@@ -1,0 +1,14 @@
+[
+  {
+    "ParameterKey": "BucketName",
+    "ParameterValue": "blog"
+  },
+  {
+    "ParameterKey": "Domain",
+    "ParameterValue": "example.com"
+  },
+  {
+    "ParameterKey": "CircleCIUser",
+    "ParameterValue":"circleci_blog"
+  }
+]

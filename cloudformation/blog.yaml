@@ -1,0 +1,147 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  BucketName:
+    Type: String
+    Default: blog
+  Domain:
+    Type: String
+    Default: example.com
+  CircleCIUser:
+    Type: String
+    Default: circleci_blog
+
+Mappings:
+  RegionMap:
+    us-east-1:
+      S3hostedzoneID: Z3AQBSTGFYJSTF
+      websiteendpoint: s3-website-us-east-1.amazonaws.com
+    us-east-2:
+      S3hostedzoneID: Z2O1EMRO9K5GLX
+      websiteendpoint: s3-website-us-east-2.amazonaws.com
+    us-west-1:
+      S3hostedzoneID: Z2F56UZL2M1ACD
+      websiteendpoint: s3-website-us-west-1.amazonaws.com
+    us-west-2:
+      S3hostedzoneID: Z3BJ6K6RIION7M
+      websiteendpoint: s3-website-us-west-2.amazonaws.com
+    ap-east-1:
+      S3hostedzoneID: ZNB98KWMFR0R6
+      websiteendpoint: s3-website-ap-east-1.amazonaws.com
+    ap-south-1:
+      S3hostedzoneID: Z11RGJOFQNVJUP
+      websiteendpoint: s3-website-ap-south-1.amazonaws.com
+    ap-northeast-1:
+      S3hostedzoneID: Z2M4EHUR26P7ZW
+      websiteendpoint: s3-website-ap-northeast-1.amazonaws.com
+    ap-northeast-2:
+      S3hostedzoneID: Z3W03O7B5YMIYP
+      websiteendpoint: s3-website-ap-northeast-2.amazonaws.com
+    ap-northeast-3:
+      S3hostedzoneID: Z2YQB5RD63NC85
+      websiteendpoint: s3-website-ap-northeast-3.amazonaws.com
+    ap-southeast-1:
+      S3hostedzoneID: Z3O0J2DXBE1FTB
+      websiteendpoint: s3-website-ap-southeast-1.amazonaws.com
+    ap-southeast-2:
+      S3hostedzoneID: Z1WCIGYICN2BYD
+      websiteendpoint: s3-website-ap-southeast-2.amazonaws.com
+    ca-central-1:
+      S3hostedzoneID: Z1QDHH18159H29
+      websiteendpoint: s3-website-ca-central-1.amazonaws.com
+    eu-central-1:
+      S3hostedzoneID: Z21DNDUVLTQW6Q
+      websiteendpoint: s3-website-eu-central-1.amazonaws.com
+    eu-west-1:
+      S3hostedzoneID: Z1BKCTXD74EZPE
+      websiteendpoint: s3-website-eu-west-1.amazonaws.com
+    eu-west-2:
+      S3hostedzoneID: Z3GKZC51ZF0DB4
+      websiteendpoint: s3-website-eu-west-2.amazonaws.com
+    eu-west-3:
+      S3hostedzoneID: Z3R1K369G5AVDG
+      websiteendpoint: s3-website-eu-west-3.amazonaws.com
+    eu-north-1:
+      S3hostedzoneID: Z3BAZG2TWCNX0D
+      websiteendpoint: s3-website-eu-north-1.amazonaws.com
+    sa-east-1:
+      S3hostedzoneID: Z7KQH4QJS55SO
+      websiteendpoint: s3-website-sa-east-1.amazonaws.com
+
+Resources:
+  BlogS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Join
+        - ""
+        - - !Ref BucketName
+          - "."
+          - !Ref Domain
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: false
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: "index.html"
+  BlogBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref BlogS3Bucket
+      PolicyDocument:
+        Statement:
+          - Action:
+              - "s3:GetObject"
+            Effect: "Allow"
+            Resource: !Join
+                - ""
+                - - "arn:aws:s3:::"
+                  - !Ref BlogS3Bucket
+                  - "/*"
+            Principal: "*"
+  CircleCiUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Ref CircleCIUser
+  CircleCiUserPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      Users:
+        - !Ref CircleCiUser
+      PolicyName: !Sub "${CircleCIUser}_policy"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "s3:PutObject"
+            Resource: !Join
+                - ""
+                - - "arn:aws:s3:::"
+                  - !Ref BlogS3Bucket
+                  - "/*"
+          - Effect: "Allow"
+            Action:
+              - "s3:ListBucket"
+            Resource: !Join
+                - ""
+                - - "arn:aws:s3:::"
+                  - !Ref BlogS3Bucket
+  BlogRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName: !Join
+        - ""
+        - - !Ref Domain
+          - "."
+      Type: A
+      Name: !Join
+        - ""
+        - - !Ref BucketName
+          - "."
+          - !Ref Domain
+      AliasTarget:
+        HostedZoneId: !FindInMap [ RegionMap, !Ref 'AWS::Region', S3hostedzoneID]
+        DNSName: !FindInMap [ RegionMap, !Ref 'AWS::Region', websiteendpoint]
+        EvaluateTargetHealth: false
