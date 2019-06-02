@@ -4,16 +4,15 @@ terraform {
 }
 
 locals {
+  purpose = {
+    "Purpose" = var.purpose
+  }
   bucket_name = "${var.bucket_name}.${var.domain}"
 }
 
 resource "aws_s3_bucket" "blog_bucket" {
   bucket = "${local.bucket_name}"
   region = "${var.region}"
-
-  website {
-    index_document = "index.html"
-  }
 
   versioning {
     enabled = true
@@ -31,10 +30,10 @@ resource "aws_s3_bucket_public_access_block" "blog_bucket_access" {
   depends_on = ["aws_s3_bucket.blog_bucket"]
   bucket = "${aws_s3_bucket.blog_bucket.id}"
 
-  block_public_acls   = true
-  block_public_policy = false
-  ignore_public_acls = true
-  restrict_public_buckets = false
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
 resource "aws_iam_user" "circleci_user" {
@@ -55,8 +54,8 @@ resource "aws_route53_record" "blog" {
   type    = "A"
 
   alias {
-    name                   = "${aws_s3_bucket.blog_bucket.website_domain}"
-    zone_id                = "${aws_s3_bucket.blog_bucket.hosted_zone_id}"
+    name                   = "${aws_cloudfront_distribution.s3_distribution.domain_name}"
+    zone_id                = "${aws_cloudfront_distribution.s3_distribution.hosted_zone_id}"
     evaluate_target_health = false
   }
 }
